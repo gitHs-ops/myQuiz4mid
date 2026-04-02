@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>중학교 전과목 시험지 생성기 ver1.8</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7ff;--bg2:#edf0fb;--surface:#ffffff;--surface2:#f0f2fa;
+  --border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.18);
+  --text:#1a1a2e;--muted:#5a5a7a;--muted2:#4a4a6a;
+  --radius:14px;--radius-sm:9px;
+}
+/* 과목별 색상 */
+.c-korean  {--ac:#f06090;--ac2:#f8a0b8;--acbg:rgba(240,96,144,.1);}
+.c-english {--ac:#4a9eff;--ac2:#84c0ff;--acbg:rgba(74,158,255,.1);}
+.c-math    {--ac:#f0a030;--ac2:#f8cc70;--acbg:rgba(240,160,48,.1);}
+.c-science {--ac:#40c888;--ac2:#80e8b8;--acbg:rgba(64,200,136,.1);}
+.c-history {--ac:#c87840;--ac2:#e8aa70;--acbg:rgba(200,120,64,.1);}
+.c-hanmun  {--ac:#a878f0;--ac2:#c8a8f8;--acbg:rgba(168,120,240,.1);}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Pretendard','Noto Sans KR',sans-serif;min-height:100vh;}
+
+/* ── 헤더 ── */
+header{
+  padding:40px 5% 32px;
+  border-bottom:2px solid rgba(124,58,237,.15);
+  background:linear-gradient(135deg,#fff 0%,#f3f0ff 100%);
+  position:relative;overflow:hidden;
+}
+header::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 80% at 50% -20%,rgba(124,58,237,.08),transparent 70%);
+  pointer-events:none;
+}
+.hdr-inner{max-width:980px;margin:0 auto;position:relative;}
+.btn-home{display:inline-flex;align-items:center;gap:6px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);color:#7c3aed;padding:7px 16px;border-radius:20px;font-size:.82rem;font-weight:600;text-decoration:none;transition:all .2s;margin-bottom:16px;}
+.btn-home:hover{background:rgba(124,58,237,.18);border-color:#7c3aed;}
+.hdr-label{font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:#7c3aed;margin-bottom:12px;font-weight:600;}
+.hdr-title{font-family:'Nanum Myeongjo',serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;line-height:1.15;letter-spacing:-.03em;margin-bottom:10px;color:#1a1630;}
+.hdr-title span{
+  background:linear-gradient(135deg,#a878f0,#4a9eff,#40c888);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hdr-sub{font-size:.9rem;color:#4a3f6e;line-height:1.6;}
+.hdr-stats{display:flex;gap:24px;margin-top:20px;flex-wrap:wrap;}
+.hdr-stat{font-size:.78rem;color:#6b5f8a;display:flex;align-items:center;gap:6px;}
+.hdr-stat span{color:#1a1630;font-weight:600;}
+
+/* ── 메인 ── */
+.wrap{max-width:980px;margin:0 auto;padding:36px 5% 100px;}
+
+/* ── 과목 선택 카드 ── */
+.step-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.subject-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px;}
+@media(max-width:600px){.subject-grid{grid-template-columns:repeat(2,1fr);}}
+.subj-card{
+  background:#ffffff;border:1.5px solid rgba(124,58,237,.15);border-radius:var(--radius);
+  padding:18px 16px;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  position:relative;overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.subj-card::before{
+  content:'';position:absolute;inset:0;
+  background:var(--acbg,rgba(255,255,255,.03));
+  opacity:0;transition:opacity .2s;
+}
+.subj-card:hover::before{opacity:1;}
+.subj-card:hover{border-color:rgba(0,0,0,.2);transform:translateY(-2px);}
+.subj-card.active{border-color:var(--ac,#fff);background:var(--acbg);}
+.subj-card.active::before{opacity:1;}
+.subj-icon{font-size:1.8rem;line-height:1;}
+.subj-name{font-size:.88rem;font-weight:700;color:#1a1630;}
+.subj-en{font-size:.7rem;color:#6b5f8a;letter-spacing:.06em;}
+.subj-check{
+  position:absolute;top:8px;right:8px;
+  width:18px;height:18px;border-radius:50%;
+  border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;transition:all .2s;
+}
+.subj-card.active .subj-check{background:var(--ac);border-color:var(--ac);color:#fff;}
+
+/* ── 설정 패널 ── */
+.config-panel{
+  background:#ffffff;border:1px solid rgba(124,58,237,.15);
+  border-radius:var(--radius);padding:24px;margin-bottom:24px;
+  display:none;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.config-panel.show{display:block;}
+.config-header{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:20px;padding-bottom:14px;
+  border-bottom:1px solid var(--border);
+}
+.config-header .icon{font-size:1.2rem;}
+.config-header h3{font-size:.95rem;font-weight:700;}
+.config-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+.cfg-item label{display:block;font-size:.72rem;color:#4a3f6e;margin-bottom:6px;font-weight:600;letter-spacing:.04em;}
+.cfg-item select{
+  width:100%;padding:8px 30px 8px 11px;
+  background:#f8f7ff;border:1px solid rgba(124,58,237,.2);
+  border-radius:var(--radius-sm);color:#1a1630;
+  font-family:'Pretendard',sans-serif;font-size:.84rem;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a748a'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  cursor:pointer;transition:border-color .2s;
+}
+.cfg-item select:focus{outline:none;border-color:var(--ac,#fff);}
+
+/* 문제 유형 */
+.qtype-section{margin-top:18px;}
+.qtype-label{font-size:.78rem;color:#4a3f6e;font-weight:700;letter-spacing:.04em;margin-bottom:10px;display:block;}
+.qtype-chips{display:flex;flex-direction:column;gap:8px;}
+.qtype-check-item{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;font-size:.88rem;color:#1a1630;}
+.qtype-check-item input[type=checkbox]{width:17px;height:17px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0;}
+.qtype-check-item:hover{color:#7c3aed;}
+
+/* ── 생성 버튼 ── */
+.btn-gen{
+  width:100%;padding:16px;border:none;border-radius:var(--radius);
+  font-family:'Pretendard',sans-serif;font-size:1rem;font-weight:700;
+  cursor:pointer;letter-spacing:.02em;
+  background:linear-gradient(135deg,var(--ac,#888),var(--ac2,#aaa));
+  color:#fff;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);
+  transition:all .2s;margin-top:20px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-gen:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.btn-gen:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.spin{animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── 로딩 ── */
+.loading-wrap{
+  text-align:center;padding:60px 20px;
+  background:#ffffff;border:1px solid rgba(124,58,237,.15);
+  border-radius:var(--radius);display:none;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.loading-icons{font-size:2.5rem;animation:fadeInOut 1.4s ease-in-out infinite;}
+@keyframes fadeInOut{0%,100%{opacity:.2;}50%{opacity:1;}}
+.loading-msg{margin-top:14px;color:#4a3f6e;font-size:.88rem;}
+.loading-bar{height:2px;background:var(--border);border-radius:1px;margin:16px auto 0;width:200px;overflow:hidden;}
+.loading-progress{height:100%;background:linear-gradient(90deg,var(--ac,#888),var(--ac2,#aaa));border-radius:1px;animation:progress 2s ease-in-out infinite;}
+@keyframes progress{0%{width:0;margin-left:0;}50%{width:60%;margin-left:20%;}100%{width:0;margin-left:100%;};}
+
+/* ── 시험지 영역 ── */
+#exam-area{display:none;margin-top:8px;}
+.action-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.btn-act{
+  padding:9px 18px;border-radius:var(--radius-sm);font-size:.82rem;font-weight:600;
+  cursor:pointer;border:1px solid var(--border2);transition:all .15s;
+  font-family:'Pretendard',sans-serif;display:flex;align-items:center;gap:6px;
+  background:#ffffff;color:#1a1630;
+}
+.btn-act:hover{border-color:var(--ac,#fff);color:var(--ac2,#fff);}
+.btn-act.primary{background:var(--ac,#888);border-color:var(--ac,#888);color:#fff;}
+.btn-act.primary:hover{opacity:.85;}
+
+.score-card{
+  background:#ffffff;border:1px solid rgba(124,58,237,.15);
+  border-radius:var(--radius);padding:20px 24px;
+  display:none;align-items:center;gap:24px;flex-wrap:wrap;
+  margin-bottom:16px;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.sc-num{font-family:'Nanum Myeongjo',serif;font-size:2.2rem;font-weight:800;line-height:1;}
+.sc-lbl{font-size:.72rem;color:#6b5f8a;margin-top:4px;}
+
+/* ── 시험지 본체 ── */
+.exam-paper{
+  background:#fff;color:#1a1208;
+  border-radius:var(--radius);padding:48px;
+  box-shadow:0 8px 48px rgba(0,0,0,.6);
+}
+.ep-header{text-align:center;border-bottom:3px double #1a1208;padding-bottom:20px;margin-bottom:28px;}
+.ep-title{font-family:'Nanum Myeongjo',serif;font-size:1.6rem;font-weight:800;letter-spacing:.08em;margin-bottom:10px;}
+.ep-meta{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;font-size:.8rem;color:#666;}
+.ep-date{font-size:.76rem;color:#999;margin-top:6px;}
+.answer-boxes{display:flex;justify-content:flex-end;gap:14px;margin-bottom:24px;flex-wrap:wrap;}
+.ans-box{border:1px solid #1a1208;border-radius:3px;padding:6px 14px;min-width:110px;display:flex;align-items:center;gap:8px;font-size:.8rem;}
+.ans-box .lbl{font-weight:700;white-space:nowrap;}
+.ans-box .ln{flex:1;border-bottom:1px solid #1a1208;min-width:50px;height:18px;}
+
+/* 과목 컬러 헤더 */
+.subj-header{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;border-radius:8px;margin-bottom:20px;
+  font-weight:700;font-size:.88rem;
+}
+
+.q-list{display:flex;flex-direction:column;gap:18px;}
+.q-item{
+  padding:14px 16px;
+  border-left:3px solid #e0d8c8;
+  background:rgba(245,240,230,.5);
+  border-radius:0 8px 8px 0;
+}
+.q-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:4px;}
+.q-num{
+  min-width:26px;height:26px;border-radius:50%;
+  background:#1a1208;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.76rem;font-weight:700;flex-shrink:0;
+}
+.q-body{font-size:.9rem;line-height:1.85;color:#1a1208;}
+.q-body .hl{font-weight:700;color:#8b1a1a;}
+.q-body .hl-b{font-weight:700;color:#1a3560;}
+.q-choices{
+  display:grid;grid-template-columns:1fr 1fr;gap:5px;
+  margin-top:10px;padding-top:9px;border-top:1px dashed #d4b896;
+}
+.q-choice{
+  display:flex;align-items:flex-start;gap:6px;
+  font-size:.83rem;padding:5px 6px;border-radius:5px;
+  cursor:pointer;transition:background .12s;line-height:1.5;color:#1a1208;
+}
+.q-choice:hover{background:rgba(139,94,10,.08);}
+.cn{
+  min-width:20px;height:20px;border-radius:50%;border:1.5px solid #cdb88a;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;flex-shrink:0;transition:all .15s;
+}
+.q-choice:hover .cn{border-color:#b8860b;color:#b8860b;}
+.q-choice.sel .cn{background:#b8860b;border-color:#b8860b;color:#fff;}
+.q-choice.ok .cn{background:#1a5c2e;border-color:#1a5c2e;color:#fff;}
+.q-choice.no .cn{background:#8b1a1a;border-color:#8b1a1a;color:#fff;}
+.fill-inp{border:none;border-bottom:1.5px solid #1a1208;background:transparent;font-size:.9rem;width:120px;text-align:center;outline:none;color:#1a1208;font-family:'Pretendard',sans-serif;}
+.ans-reveal{display:none;margin-top:9px;padding:7px 11px;background:rgba(26,92,46,.07);border-left:3px solid #1a5c2e;border-radius:0 5px 5px 0;font-size:.79rem;color:#1a5c2e;font-weight:600;line-height:1.6;}
+.ans-reveal.show{display:block;}
+
+/* ── 토큰 사용량 표시 ── */
+.token-tracker{
+  margin-top:14px;padding:12px 16px;
+  background:#f8f7ff;border:1px solid rgba(124,58,237,.2);
+  border-radius:var(--radius-sm);font-size:.78rem;color:#4a3f6e;
+  display:none;
+}
+.token-tracker.show{display:block;}
+.token-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.token-label{font-weight:600;color:#6b5f8a;}
+.token-val{font-weight:700;color:#1a1630;}
+.token-bar-wrap{height:5px;background:rgba(124,58,237,.12);border-radius:3px;margin-top:8px;overflow:hidden;}
+.token-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,#7c3aed,#4a9eff);transition:width .4s;}
+.token-warn{
+  margin-top:8px;padding:6px 10px;border-radius:5px;
+  font-size:.76rem;font-weight:600;display:none;
+}
+.token-warn.yellow{background:rgba(240,160,48,.12);color:#b87800;border:1px solid rgba(240,160,48,.3);display:block;}
+.token-warn.red{background:rgba(220,38,38,.1);color:#b91c1c;border:1px solid rgba(220,38,38,.25);display:block;}
+
+@media(max-width:600px){
+  .exam-paper{padding:24px 16px;}
+  .q-choices{grid-template-columns:1fr;}
+  .config-grid{grid-template-columns:1fr 1fr;}
+}
+@media print{
+  body{background:#fff!important;}
+  header,.wrap>*:not(#exam-area){display:none!important;}
+  .action-bar,.score-card,.config-panel,.subject-grid,.step-label{display:none!important;}
+  .exam-paper{box-shadow:none!important;padding:0!important;}
+  .ans-reveal{display:none!important;}
+  #exam-area{display:block!important;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-inner">
+    <a href="index.html" class="btn-home">← 홈으로</a>
+    <div class="hdr-label">AI-Powered · 교육부 2015·2022 개정 기준 ver1.8</div>
+    <h1 class="hdr-title">중학교 <span>전과목</span> 시험지 생성기 <sup style="font-size:.45em;font-family:'Pretendard',sans-serif;font-weight:700;background:rgba(124,58,237,.15);color:#7c3aed;padding:3px 8px;border-radius:10px;vertical-align:middle;letter-spacing:.04em;">v1.8</sup></h1>
+    <p class="hdr-sub">과목·학년·학기·단원을 선택하면 AI가 맞춤형 시험지를 즉시 생성합니다</p>
+    <div class="hdr-stats">
+      <div class="hdr-stat">📚 지원 과목 <span>6과목</span></div>
+      <div class="hdr-stat">🏫 대상 <span>중1·2·3학년</span></div>
+      <div class="hdr-stat">📋 문항 수 <span>10·20·30문항</span></div>
+      <div class="hdr-stat">📖 교재 <span>5~6개 출판사</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STEP 1: 과목 선택 -->
+  <p class="step-label">STEP 1 · 과목 선택</p>
+  <div class="subject-grid">
+    <div class="subj-card c-korean" onclick="selectSubject('korean',this)">
+      <div class="subj-check">✓</div>
+      <div class="subj-icon">📖</div>
+      <div class="subj-name">국 어</div>
+      <div class="subj-en">KOREAN</div>
+    </div>
+    <div class="subj-card c-english" onclick="selectSubject('english',this)">
+      <div class="subj-check">✓</div>
+      <div class="subj-icon">🔤</div>
+      <div class="subj-name">영 어</div>
+      <div class="subj-en">ENGLISH</div>
+    </div>
+    <div class="subj-card c-math" onclick="selectSubject('math',this)">
+      <div class="subj-check">✓</div>
+      <div class="subj-icon">📐</div>
+      <div class="subj-name">수 학</div>
+      <div class="subj-en">MATH</div>
+    </div>
+    <div class="subj-card c-science" onclick="selectSubject('science',this)">
+      <div class="subj-check">✓</div>
+      <div class="subj-icon">🔬</div>
+      <div class="subj-name">과 학</div>
+      <div class="subj-en">SCIENCE</div>
+    </div>
+    <div class="subj-card c-history" onclick="selectSubject('history',this)">
+      <div class="subj-check">✓</div>
+      <div class="subj-icon">🏛️</div>
+      <div class="subj-name">역 사</div>
+      <div class="subj-en">HISTORY</div>
+    </div>
+    <div class="subj-card c-hanmun" onclick="selectSubject('hanmun',this)">
+      <div class="subj-check">✓</div>
+      <div class="subj-icon">漢</div>
+      <div class="subj-name">한 문</div>
+      <div class="subj-en">HANMUN</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 상세 설정 (과목 선택 시 표시) -->
+  <div id="config-panel" class="config-panel">
+    <div class="config-header">
+      <span class="icon" id="cfg-icon">📖</span>
+      <h3 id="cfg-title">국어 시험지 설정</h3>
+    </div>
+    <div class="config-grid">
+      <div class="cfg-item">
+        <label>학년</label>
+        <select id="sel-grade">
+          <option value="1">중학교 1학년</option>
+          <option value="2" selected>중학교 2학년</option>
+          <option value="3">중학교 3학년</option>
+        </select>
+      </div>
+      <div class="cfg-item">
+        <label>학기</label>
+        <select id="sel-sem">
+          <option value="mid1">1학기 중간고사</option>
+          <option value="final1">1학기 기말고사</option>
+          <option value="mid2">2학기 중간고사</option>
+          <option value="final2">2학기 기말고사</option>
+        </select>
+      </div>
+      <div class="cfg-item">
+        <label>교재(출판사)</label>
+        <div id="sel-pub" style="display:flex;flex-direction:column;gap:5px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);max-height:140px;overflow-y:auto;"></div>
+      </div>
+      <div class="cfg-item">
+        <label>단원</label>
+        <div id="sel-unit" style="display:flex;flex-direction:column;gap:5px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;"></div>
+      </div>
+      <div class="cfg-item">
+        <label>문항 수</label>
+        <select id="sel-count">
+          <option value="5">5문항</option>
+          <option value="10">10문항</option>
+          <option value="15">15문항</option>
+          <option value="20" selected>20문항</option>
+          <option value="25">25문항</option>
+          <option value="30">30문항</option>
+        </select>
+      </div>
+      <div class="cfg-item">
+        <label>난이도</label>
+        <select id="sel-level">
+          <option value="easy">하 (기본)</option>
+          <option value="mid" selected>중 (보통)</option>
+          <option value="hard">상 (심화)</option>
+          <option value="mix">혼합</option>
+        </select>
+      </div>
+    </div>
+    <div class="qtype-section">
+      <span class="qtype-label">문제 유형 (복수 선택)</span>
+      <div class="qtype-chips" id="qtype-chips"></div>
+    </div>
+    <button class="btn-gen" id="btn-gen" onclick="generateExam()">
+      <span id="btn-text">✦ 시험지 생성하기</span>
+    </button>
+    <div class="token-tracker" id="token-tracker">
+      <div class="token-row">
+        <span class="token-label">이번 요청 토큰</span>
+        <span class="token-val" id="tk-req">-</span>
+      </div>
+      <div class="token-row" style="margin-top:5px;">
+        <span class="token-label">오늘 누적 토큰</span>
+        <span class="token-val" id="tk-total">-</span>
+        <span style="color:#9b8fb8;font-size:.72rem;cursor:pointer;" onclick="resetTokenCount()" title="오늘 기록 초기화">↺ 오늘 초기화</span>
+      </div>
+      <div class="token-row" style="margin-top:5px;">
+        <span class="token-label">📊 전체 누적 토큰</span>
+        <span class="token-val" id="tk-grand">-</span>
+        <span style="color:#9b8fb8;font-size:.72rem;cursor:pointer;" onclick="resetAllTokenCount()" title="전체 기록 초기화">↺ 전체 초기화</span>
+      </div>
+      <div class="token-bar-wrap"><div class="token-bar" id="tk-bar" style="width:0%"></div></div>
+      <div class="token-warn" id="tk-warn"></div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading-wrap" id="loading-wrap">
+    <div class="loading-icons" id="loading-icon">📚</div>
+    <div class="loading-msg" id="loading-msg">AI가 문제를 생성하고 있습니다...</div>
+    <div class="loading-bar"><div class="loading-progress" id="lp"></div></div>
+  </div>
+
+  <!-- 시험지 -->
+  <div id="exam-area">
+    <div class="action-bar">
+      <button class="btn-act primary" onclick="checkAnswers()">✅ 채점하기</button>
+      <button class="btn-act" onclick="toggleAnswers()">🔑 정답 보기/숨기기</button>
+      <button class="btn-act" onclick="window.print()">🖨️ 인쇄하기</button>
+      <button class="btn-act" onclick="generateExam()">🔄 새 시험지</button>
+    </div>
+    <div class="score-card" id="score-card">
+      <div><div class="sc-num" id="sc-ok" style="color:#40c888">0</div><div class="sc-lbl">정답</div></div>
+      <div><div class="sc-num" id="sc-no" style="color:#f06060">0</div><div class="sc-lbl">오답</div></div>
+      <div><div class="sc-num" id="sc-pt" style="color:#f0a030">0점</div><div class="sc-lbl">점수</div></div>
+      <div style="flex:1;font-size:.84rem;color:var(--muted2);line-height:1.7;" id="sc-msg"></div>
+    </div>
+    <div class="exam-paper" id="exam-paper">
+      <div class="ep-header">
+        <div class="ep-title" id="ep-title">시험지</div>
+        <div class="ep-meta">
+          <span id="em-grade"></span><span id="em-sem"></span>
+          <span id="em-pub"></span><span id="em-unit"></span><span id="em-cnt"></span>
+        </div>
+        <div class="ep-date" id="ep-date"></div>
+      </div>
+      <div class="answer-boxes">
+        <div class="ans-box"><span class="lbl">성명</span><div class="ln"></div></div>
+        <div class="ans-box"><span class="lbl">점수</span><div class="ln"></div></div>
+      </div>
+      <div class="q-list" id="q-list"></div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ── 프록시 URL 설정 ──
+// exam-proxy.gs를 Apps Script에 배포한 후 아래 URL을 입력하세요
+const EXAM_PROXY_URL = "https://script.google.com/macros/s/AKfycbyfB5Xi7V8qC4a1rKP24ArexpA02un5SnyhmuRlwh43nD6OXgEosC5aMwD8AZU4_zlmWQ/exec";
+
+// ══════════════════════════════════════════
+//  과목 데이터
+// ══════════════════════════════════════════
+const SUBJECTS = {
+  korean:{
+    name:'국어',icon:'📖',color:'#f06090',
+    publishers:{
+      visang:'비상교육',chunjae:'천재교과서',mirae:'미래엔',jihak:'지학사',changbi:'창비'
+    },
+    units:{
+      visang:{1:{1:['전체','1. 문학의 갈래','2. 읽기 전략','3. 문법 기초'],2:['전체','4. 표현과 매체','5. 문학 감상','6. 쓰기와 말하기']},
+              2:{1:['전체','1. 어휘와 표현','2. 문학과 삶','3. 국어의 변천'],2:['전체','4. 논리적 사고','5. 문학 창작','6. 문법 심화']},
+              3:{1:['전체','1. 비판적 읽기','2. 문학의 아름다움','3. 고전 문학'],2:['전체','4. 한국어의 역사','5. 언어와 사회','6. 문학과 현실']}},
+      chunjae:{1:{1:['전체','1. 문학의 이해','2. 읽기와 쓰기','3. 문법의 기초'],2:['전체','4. 매체와 표현','5. 시와 소설','6. 언어 규범']},
+               2:{1:['전체','1. 어휘 탐구','2. 시의 세계','3. 소설 읽기'],2:['전체','4. 논술과 토론','5. 고전 산문','6. 문법 탐구']},
+               3:{1:['전체','1. 현대 소설','2. 현대 시','3. 수필과 극'],2:['전체','4. 고전 시가','5. 국어의 규범','6. 언어와 문화']}},
+      mirae:{1:{1:['전체','1. 문학의 갈래와 특성','2. 의사소통','3. 국어 문법'],2:['전체','4. 읽기와 독서','5. 문학 감상','6. 쓰기의 실제']},
+             2:{1:['전체','1. 문학과 삶','2. 설득과 논증','3. 언어의 본질'],2:['전체','4. 문학 비평','5. 매체 언어','6. 국어의 탐구']},
+             3:{1:['전체','1. 문학의 전통','2. 비문학 읽기','3. 한국어의 역사'],2:['전체','4. 고전 문학','5. 국어 생활','6. 언어와 사회']}},
+      jihak:{1:{1:['전체','1. 언어와 국어','2. 문학 이해','3. 읽기 전략'],2:['전체','4. 쓰기와 말하기','5. 문학과 표현','6. 문법 탐구']},
+             2:{1:['전체','1. 국어의 품사','2. 문학의 감상','3. 비문학 읽기'],2:['전체','4. 글쓰기의 전략','5. 고전의 세계','6. 국어와 문화']},
+             3:{1:['전체','1. 문학의 깊이','2. 논리적 읽기','3. 고전 문학'],2:['전체','4. 국어의 역사','5. 언어 탐구','6. 현대와 문학']}},
+      changbi:{1:{1:['전체','1. 시와 소설','2. 읽기의 기술','3. 우리말 탐구'],2:['전체','4. 표현의 방식','5. 문학 감상','6. 국어 문법']},
+               2:{1:['전체','1. 어휘의 세계','2. 문학 읽기','3. 국어의 문법'],2:['전체','4. 논리와 설득','5. 고전 문학','6. 창의적 표현']},
+               3:{1:['전체','1. 현대 문학','2. 비판적 사고','3. 고전 감상'],2:['전체','4. 언어와 생활','5. 국어의 역사','6. 문학의 세계']}}
+    },
+    qtypes:[
+      {v:'comprehension',l:'📝 독해·이해'},
+      {v:'grammar',l:'📌 문법·어법'},
+      {v:'vocab',l:'🔤 어휘·표현'},
+      {v:'literature',l:'📚 문학 감상'},
+      {v:'writing',l:'✏️ 쓰기·서술'},
+      {v:'fill',l:'◻️ 빈칸 채우기'},
+    ]
+  },
+  english:{
+    name:'영어',icon:'🔤',color:'#4a9eff',
+    publishers:{visang:'비상교육',chunjae:'천재교과서',mirae:'미래엔',yds:'YBM'},
+    units:{
+      visang:{1:{1:['전체','L1. Hello, Everyone','L2. My Interests','L3. Around the World'],2:['전체','L4. Healthy Life','L5. Nature and Us','L6. Future Dreams']},
+              2:{1:['전체','L1. New Beginnings','L2. Culture and Life','L3. Science Wonders'],2:['전체','L4. History and Heritage','L5. Environment','L6. Think Big']},
+              3:{1:['전체','L1. Growing Up','L2. Technology','L3. Social Issues'],2:['전체','L4. Global Citizens','L5. Art and Expression','L6. Future World']}},
+      chunjae:{1:{1:['전체','Unit 1. Meet New Friends','Unit 2. Hobbies & Sports','Unit 3. Food & Health'],2:['전체','Unit 4. Seasons & Weather','Unit 5. School Life','Unit 6. Animals & Nature']},
+               2:{1:['전체','Unit 1. Travel & Places','Unit 2. Communication','Unit 3. Science'],2:['전체','Unit 4. Culture','Unit 5. Inventions','Unit 6. Environment']},
+               3:{1:['전체','Unit 1. People & Stories','Unit 2. Media','Unit 3. Future Jobs'],2:['전체','Unit 4. World Heritage','Unit 5. Challenges','Unit 6. Peace']}},
+      mirae:{1:{1:['전체','1. Greetings','2. Hobbies','3. School'],2:['전체','4. Food','5. Travel','6. Nature']},
+             2:{1:['전체','1. Culture','2. Science','3. Communication'],2:['전체','4. History','5. Sports','6. Future']},
+             3:{1:['전체','1. Media','2. Society','3. Technology'],2:['전체','4. Environment','5. Dreams','6. World']}},
+      yds:{1:{1:['전체','Lesson 1','Lesson 2','Lesson 3'],2:['전체','Lesson 4','Lesson 5','Lesson 6']},
+           2:{1:['전체','Lesson 1','Lesson 2','Lesson 3'],2:['전체','Lesson 4','Lesson 5','Lesson 6']},
+           3:{1:['전체','Lesson 1','Lesson 2','Lesson 3'],2:['전체','Lesson 4','Lesson 5','Lesson 6']}}
+    },
+    qtypes:[
+      {v:'vocab',l:'📝 어휘·단어'},
+      {v:'grammar',l:'📌 문법·구조'},
+      {v:'reading',l:'📖 독해·해석'},
+      {v:'listening',l:'👂 듣기 대화'},
+      {v:'writing',l:'✏️ 영작·문장'},
+      {v:'fill',l:'◻️ 빈칸 채우기'},
+    ]
+  },
+  math:{
+    name:'수학',icon:'📐',color:'#f0a030',
+    publishers:{visang:'비상교육',chunjae:'천재교과서',mirae:'미래엔',jihak:'지학사'},
+    units:{
+      visang:{1:{1:['전체','1. 소인수분해','2. 정수와 유리수','3. 문자와 식'],2:['전체','4. 일차방정식','5. 좌표평면','6. 통계']},
+              2:{1:['전체','1. 유리수와 순환소수','2. 단항식·다항식 계산','3. 일차부등식'],2:['전체','4. 연립방정식','5. 일차함수','6. 도형의 성질']},
+              3:{1:['전체','1. 실수와 그 계산','2. 인수분해','3. 이차방정식'],2:['전체','4. 이차함수','5. 삼각비','6. 원의 성질']}},
+      chunjae:{1:{1:['전체','Ⅰ. 소인수분해','Ⅱ. 정수와 유리수','Ⅲ. 일차방정식'],2:['전체','Ⅳ. 일차함수','Ⅴ. 기본 도형','Ⅵ. 통계']},
+               2:{1:['전체','Ⅰ. 유리수와 소수','Ⅱ. 식의 계산','Ⅲ. 부등식'],2:['전체','Ⅳ. 연립방정식','Ⅴ. 일차함수','Ⅵ. 도형']},
+               3:{1:['전체','Ⅰ. 실수','Ⅱ. 인수분해','Ⅲ. 이차방정식'],2:['전체','Ⅳ. 이차함수','Ⅴ. 삼각비','Ⅵ. 원']}},
+      mirae:{1:{1:['전체','1. 소인수분해','2. 정수·유리수','3. 문자와 식'],2:['전체','4. 방정식','5. 좌표와 그래프','6. 기본 도형']},
+             2:{1:['전체','1. 수와 식','2. 부등식','3. 연립방정식'],2:['전체','4. 일차함수','5. 도형의 성질','6. 확률']},
+             3:{1:['전체','1. 제곱근','2. 인수분해','3. 이차방정식'],2:['전체','4. 이차함수','5. 삼각비·원','6. 통계']}},
+      jihak:{1:{1:['전체','Ⅰ. 자연수의 성질','Ⅱ. 정수와 유리수','Ⅲ. 문자와 식'],2:['전체','Ⅳ. 일차방정식','Ⅴ. 그래프','Ⅵ. 통계와 확률']},
+             2:{1:['전체','Ⅰ. 유리수와 순환소수','Ⅱ. 다항식','Ⅲ. 부등식'],2:['전체','Ⅳ. 연립방정식','Ⅴ. 일차함수','Ⅵ. 도형']},
+             3:{1:['전체','Ⅰ. 실수','Ⅱ. 식의 계산','Ⅲ. 이차방정식'],2:['전체','Ⅳ. 이차함수','Ⅴ. 삼각비','Ⅵ. 원']}}
+    },
+    qtypes:[
+      {v:'concept',l:'📌 개념·정의'},
+      {v:'calc',l:'🔢 계산·풀이'},
+      {v:'apply',l:'💡 응용·문장제'},
+      {v:'graph',l:'📈 그래프·좌표'},
+      {v:'proof',l:'📐 도형·증명'},
+      {v:'fill',l:'◻️ 빈칸 채우기'},
+    ]
+  },
+  science:{
+    name:'과학',icon:'🔬',color:'#40c888',
+    publishers:{visang:'비상교육',chunjae:'천재교과서',mirae:'미래엔',jihak:'지학사'},
+    units:{
+      visang:{1:{1:['전체','Ⅰ. 지권의 변화','Ⅱ. 여러 가지 힘','Ⅲ. 생물의 다양성'],2:['전체','Ⅳ. 기체의 성질','Ⅴ. 물질의 상태 변화','Ⅵ. 빛과 파동']},
+              2:{1:['전체','Ⅰ. 물질의 구성','Ⅱ. 전기와 자기','Ⅲ. 태양계'],2:['전체','Ⅳ. 식물과 에너지','Ⅴ. 동물과 에너지','Ⅵ. 열과 우리 생활']},
+              3:{1:['전체','Ⅰ. 화학 반응의 규칙','Ⅱ. 기권과 날씨','Ⅲ. 운동과 에너지'],2:['전체','Ⅳ. 자극과 반응','Ⅴ. 생식과 발생','Ⅵ. 에너지 전환']}},
+      chunjae:{1:{1:['전체','1. 지구계','2. 힘과 운동','3. 생물의 분류'],2:['전체','4. 물질의 성질','5. 소리와 빛','6. 지권의 변화']},
+               2:{1:['전체','1. 물질의 구성','2. 전기','3. 태양계'],2:['전체','4. 물질 대사','5. 열역학','6. 자기장']},
+               3:{1:['전체','1. 화학 반응','2. 기상','3. 뉴턴의 법칙'],2:['전체','4. 신경계','5. 유전','6. 전기 에너지']}},
+      mirae:{1:{1:['전체','1. 지권','2. 힘과 운동','3. 생물 다양성'],2:['전체','4. 기체','5. 파동','6. 물질 변화']},
+             2:{1:['전체','1. 원소와 원자','2. 전기·자기','3. 태양계'],2:['전체','4. 광합성','5. 소화·순환','6. 열과 에너지']},
+             3:{1:['전체','1. 화학 반응','2. 기권과 날씨','3. 힘과 에너지'],2:['전체','4. 자극과 반응','5. 생식과 유전','6. 에너지 전환']}},
+      jihak:{1:{1:['전체','Ⅰ. 지구의 구조','Ⅱ. 힘과 운동','Ⅲ. 생물의 특성'],2:['전체','Ⅳ. 물질의 특성','Ⅴ. 파동과 소리','Ⅵ. 화학 변화']},
+             2:{1:['전체','Ⅰ. 물질의 구성','Ⅱ. 전기','Ⅲ. 별과 우주'],2:['전체','Ⅳ. 에너지','Ⅴ. 생명 현상','Ⅵ. 기술과 사회']},
+             3:{1:['전체','Ⅰ. 화학','Ⅱ. 지구과학','Ⅲ. 물리'],2:['전체','Ⅳ. 생물','Ⅴ. 에너지와 환경','Ⅵ. 과학과 미래']}}
+    },
+    qtypes:[
+      {v:'concept',l:'📌 개념·원리'},
+      {v:'calc',l:'🔢 계산·공식'},
+      {v:'apply',l:'💡 탐구·적용'},
+      {v:'experiment',l:'🧪 실험·관찰'},
+      {v:'diagram',l:'📊 그림·도표'},
+      {v:'fill',l:'◻️ 빈칸 채우기'},
+    ]
+  },
+  history:{
+    name:'역사',icon:'🏛️',color:'#c87840',
+    publishers:{visang:'비상교육',chunjae:'천재교과서',kumsung:'금성출판사',mirae:'미래엔',jihak:'지학사',dongah:'동아출판'},
+    units:{
+      visang:{1:{1:['전체','Ⅰ. 문명의 발생과 고대 세계','Ⅱ. 세계 종교의 확산','Ⅲ. 지역 세계의 교류'],2:['전체','Ⅳ. 제국주의와 민족 운동','Ⅴ. 세계 대전과 변동','Ⅵ. 현대 세계']},
+              2:{1:['전체','Ⅰ. 선사~고대 국가','Ⅱ. 남북국 시대','Ⅲ. 고려의 성립'],2:['전체','Ⅳ. 조선의 성립','Ⅴ. 조선의 변동','Ⅵ. 근·현대']},
+              3:{1:['전체','Ⅰ. 개항과 근대화','Ⅱ. 일제 식민 통치','Ⅲ. 대한민국 수립'],2:['전체','Ⅳ. 경제 성장','Ⅴ. 민주주의 발전','Ⅵ. 평화 통일']}},
+      chunjae:{1:{1:['전체','1. 인류의 출현','2. 동아시아 세계','3. 서아시아·지중해'],2:['전체','4. 유럽 세계 변화','5. 교류의 확대','6. 근대 이후']},
+               2:{1:['전체','1. 선사~국가 형성','2. 삼국 성립','3. 통일 신라·발해','4. 고려'],2:['전체','5. 조선의 성립','6. 조선의 변화','7. 근현대']},
+               3:{1:['전체','1. 국권 침탈','2. 일제 식민 통치','3. 3·1운동'],2:['전체','4. 광복과 정부수립','5. 민주주의 시련','6. 경제 성장']}},
+      kumsung:{1:{1:['전체','Ⅰ. 선사~문명','Ⅱ. 세계 종교','Ⅲ. 중세 세계'],2:['전체','Ⅳ. 근대의 시작','Ⅴ. 제국주의','Ⅵ. 현대 세계']},
+               2:{1:['전체','Ⅰ. 선사~고조선','Ⅱ. 삼국~통일','Ⅲ. 고려'],2:['전체','Ⅳ. 조선 건국','Ⅴ. 조선 후기','Ⅵ. 개항~근대']},
+               3:{1:['전체','Ⅰ. 일제 강점기','Ⅱ. 독립운동','Ⅲ. 광복과 분단'],2:['전체','Ⅳ. 대한민국 발전','Ⅴ. 민주화 운동','Ⅵ. 현대의 과제']}},
+      mirae:{1:{1:['전체','1. 문명의 발생','2. 세계의 형성','3. 지역 문화'],2:['전체','4. 유럽 근대','5. 제국주의','6. 현대 세계']},
+             2:{1:['전체','1. 선사~고조선','2. 삼국~통일','3. 남북국~고려'],2:['전체','4. 조선 전기','5. 조선 후기','6. 근·현대']},
+             3:{1:['전체','1. 개항~개화','2. 일제 강점','3. 독립운동'],2:['전체','4. 광복~정부수립','5. 민주주의 발전','6. 경제·사회']}},
+      jihak:{1:{1:['전체','1. 선사~고대 문명','2. 세계 종교·문화권','3. 동서 교류'],2:['전체','4. 근대의 시작','5. 제국주의와 전쟁','6. 현대 세계']},
+             2:{1:['전체','1. 선사~고대 국가','2. 삼국 시대','3. 남북국~고려'],2:['전체','4. 조선의 성립','5. 조선의 변동','6. 근현대사']},
+             3:{1:['전체','1. 개항과 근대화','2. 일제 식민지','3. 독립운동'],2:['전체','4. 해방과 분단','5. 민주주의 발전','6. 현대의 한국']}},
+      dongah:{1:{1:['전체','Ⅰ. 문명의 탄생','Ⅱ. 동아시아의 형성','Ⅲ. 서양 세계의 변화'],2:['전체','Ⅳ. 근대 국민 국가','Ⅴ. 두 차례의 세계대전','Ⅵ. 현대 세계']},
+              2:{1:['전체','Ⅰ. 선사와 고대','Ⅱ. 삼국과 남북국','Ⅲ. 고려 사회'],2:['전체','Ⅳ. 조선 전기','Ⅴ. 조선 후기','Ⅵ. 근현대']},
+              3:{1:['전체','Ⅰ. 개항과 개화','Ⅱ. 일제 강점기','Ⅲ. 독립운동'],2:['전체','Ⅳ. 광복과 수립','Ⅴ. 민주화 과정','Ⅵ. 경제·사회 변화']}}
+    },
+    qtypes:[
+      {v:'fact',l:'📌 역사적 사실'},
+      {v:'period',l:'📅 시대·연도 순서'},
+      {v:'figure',l:'👤 역사적 인물'},
+      {v:'event',l:'⚔️ 사건 이해'},
+      {v:'cause',l:'🔍 원인·결과'},
+      {v:'source',l:'📜 사료·유물'},
+      {v:'fill',l:'◻️ 빈칸 채우기'},
+    ]
+  },
+  hanmun:{
+    name:'한문',icon:'漢',color:'#a878f0',
+    publishers:{visang:'비상교육',chunjae:'천재교과서',kumsung:'금성출판사',mirae:'미래엔',jihak:'지학사'},
+    units:{
+      visang:{1:{1:['전체','Ⅰ. 안녕? 한문 (1-3단원)','Ⅱ. 우리 곁의 한자 (4-7단원)','Ⅲ. 성어 (8단원)'],2:['전체','Ⅳ. 한문의 향기 (9-11단원)','Ⅴ. 선인들의 지혜 (12-14단원)']},
+              2:{1:['전체','Ⅰ. 한자와 어휘 (1-3단원)','Ⅱ. 한문과 언어생활 (4-6단원)','Ⅲ. 성어와 옛글 (7-9단원)'],2:['전체','Ⅳ. 한시의 세계 (10-12단원)','Ⅴ. 역사 속 인물 (13-15단원)']},
+              3:{1:['전체','Ⅰ. 언어와 한자','Ⅱ. 고전 산문','Ⅲ. 한시 감상'],2:['전체','Ⅳ. 옛사람의 지혜','Ⅴ. 역사와 문화']}},
+      chunjae:{1:{1:['전체','1. 한자의 짜임','2. 한자 어휘','3. 단문 읽기'],2:['전체','4. 성어와 속담','5. 한시 감상','6. 산문과 명언']},
+               2:{1:['전체','1. 한자의 구성','2. 일상 속 한자','3. 짧은 한문'],2:['전체','4. 성어 이야기','5. 한시와 감성','6. 고전 속 지혜']},
+               3:{1:['전체','1. 한문 독해','2. 명언과 경구','3. 한시 이해'],2:['전체','4. 고전 산문','5. 역사 기록','6. 우리 문화']}},
+      kumsung:{1:{1:['전체','Ⅰ. 한문 그 첫발','Ⅱ. 표현은 간결하게','Ⅲ. 사람다운 삶'],2:['전체','Ⅳ. 함께 만드는 세상','Ⅴ. 그림을 보는 듯','Ⅵ. 아름다운 우리나라']},
+               2:{1:['전체','Ⅰ. 한자와 문자생활','Ⅱ. 한자 어휘와 우리말','Ⅲ. 한문과 성어'],2:['전체','Ⅳ. 한시의 이해','Ⅴ. 옛사람의 이야기']},
+               3:{1:['전체','Ⅰ. 한문 독해 기초','Ⅱ. 고전 명문','Ⅲ. 한시 감상'],2:['전체','Ⅳ. 역사와 문화','Ⅴ. 삶의 지혜']}},
+      mirae:{1:{1:['전체','1단원. 한자와 생활','2단원. 한자 어휘','3단원. 짧은 한문'],2:['전체','4단원. 성어와 문화','5단원. 한시 세계','6단원. 고전의 가르침']},
+             2:{1:['전체','1단원. 한자 구성','2단원. 어휘 확장','3단원. 한문 문장'],2:['전체','4단원. 성어 탐구','5단원. 한시와 정서','6단원. 선인의 지혜']},
+             3:{1:['전체','1단원. 독해의 기초','2단원. 명문 읽기','3단원. 시와 감성'],2:['전체','4단원. 역사 기록','5단원. 우리 문화와 한자']}},
+      jihak:{1:{1:['전체','1. 한자의 기초','2. 어휘와 생활','3. 짧은 문장'],2:['전체','4. 성어와 속담','5. 한시 맛보기','6. 우리 문화']},
+             2:{1:['전체','1. 한자 이해','2. 어휘 활용','3. 한문 문장 읽기'],2:['전체','4. 성어와 문화','5. 한시 감상','6. 고전 속 이야기']},
+             3:{1:['전체','1. 독해 실력 다지기','2. 명문 읽기','3. 한시 이해'],2:['전체','4. 고전 산문','5. 역사와 문화','6. 삶의 지혜']}}
+    },
+    qtypes:[
+      {v:'reading',l:'📖 한자 읽기(음·훈)'},
+      {v:'meaning',l:'💡 어휘 뜻'},
+      {v:'writing',l:'✏️ 한자 쓰기'},
+      {v:'sentence',l:'📜 문장 해석'},
+      {v:'idiom',l:'🎯 성어·사자성어'},
+      {v:'fill',l:'◻️ 빈칸 채우기'},
+    ]
+  }
+};
+
+const LEVEL_NAME={easy:'하(기본)',mid:'중(보통)',hard:'상(심화)',mix:'혼합'};
+const SUBJ_PROMPTS={
+  korean:'국어 교과서',english:'영어 교과서',math:'수학 교과서',
+  science:'과학 교과서',history:'역사 교과서(한국사/세계사)',hanmun:'한문 교과서'
+};
+
+let currentSubj = null;
+let currentQuestions = [];
+let answersShown = false;
+let pubFirst = '';
+
+// ── 과목 선택 ──
+function selectSubject(subj, el) {
+  // 토글
+  if (currentSubj === subj && el.classList.contains('active')) {
+    el.classList.remove('active');
+    currentSubj = null;
+    document.getElementById('config-panel').classList.remove('show');
+    return;
+  }
+  document.querySelectorAll('.subj-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentSubj = subj;
+
+  const s = SUBJECTS[subj];
+  const panel = document.getElementById('config-panel');
+  panel.className = `config-panel show c-${subj}`;
+
+  document.getElementById('cfg-icon').textContent = s.icon;
+  document.getElementById('cfg-title').textContent = `${s.name} 시험지 설정`;
+
+  // 출판사 체크박스 (전체 제외, 복수 선택)
+  const pubDiv = document.getElementById('sel-pub');
+  pubDiv.innerHTML = Object.entries(s.publishers).map(([k,v])=>
+    `<label style="display:flex;align-items:center;gap:7px;font-size:.85rem;cursor:pointer;padding:3px 0;">
+      <input type="checkbox" name="pub" value="${k}" checked style="accent-color:#7c3aed;width:14px;height:14px;flex-shrink:0;"> ${v}
+    </label>`).join('');
+
+  // 문제 유형 칩
+  const chips = document.getElementById('qtype-chips');
+  chips.innerHTML = s.qtypes.map(q=>`<label class="qtype-check-item"><input type="checkbox" name="qtype" value="${q.v}" checked> ${q.l}</label>`).join('');
+
+  // 단원 업데이트
+  updateUnits();
+
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── 단원 업데이트 ──
+function updateUnits(){
+  if (!currentSubj) return;
+  const g = document.getElementById('sel-grade').value;
+  const semVal = document.getElementById('sel-sem').value;
+  const s = semVal.includes('2') ? '2' : '1';
+  const checkedPubs = [...document.querySelectorAll('input[name=pub]:checked')].map(e=>e.value);
+  const p = checkedPubs[0] || Object.keys(SUBJECTS[currentSubj].publishers)[0];
+  const units = SUBJECTS[currentSubj].units?.[p]?.[g]?.[s] || ['전체'];
+  const unitDiv = document.getElementById('sel-unit');
+  // '전체' 항목(인덱스0) 제거하고 나머지만 표시
+  const filteredUnits = units.filter((u,i) => i !== 0);
+  unitDiv.innerHTML = filteredUnits.map((u,i)=>
+    `<label style="display:flex;align-items:center;gap:7px;font-size:.85rem;cursor:pointer;padding:3px 0;">
+      <input type="checkbox" name="unit" value="${i+1}" checked style="accent-color:#7c3aed;width:14px;height:14px;flex-shrink:0;"> ${u}
+    </label>`).join('');
+}['sel-grade','sel-sem'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',updateUnits);
+});
+document.getElementById('sel-pub').addEventListener('change',updateUnits);
+
+// ── 시험지 생성 ──
+async function generateExam(){
+  if (!currentSubj) { alert('과목을 먼저 선택해 주세요.'); return; }
+  const s  = SUBJECTS[currentSubj];
+  const grade = document.getElementById('sel-grade').value;
+  const semVal = document.getElementById('sel-sem').value;
+  const sem = semVal.includes('1')?'1':semVal.includes('2')?'2':semVal;
+  const semLabel = semVal==='mid1'?'1학기 중간고사':semVal==='final1'?'1학기 기말고사':semVal==='mid2'?'2학기 중간고사':semVal==='final2'?'2학기 기말고사':sem+'학기';
+  const pubChecked=[...document.querySelectorAll('input[name=pub]:checked')].map(e=>e.value);
+  const pub = pubChecked.length ? pubChecked.join(', ') : Object.keys(SUBJECTS[currentSubj].publishers)[0];
+  const pubFirst = pubChecked[0] || Object.keys(SUBJECTS[currentSubj].publishers)[0];
+  const unitChecked=[...document.querySelectorAll('input[name=unit]:checked')].map(e=>e.closest('label').textContent.trim());
+  const unit=unitChecked.length?unitChecked.join(', '):'전체';
+  const count = document.getElementById('sel-count').value;
+  const level = document.getElementById('sel-level').value;
+  const qtypes=[...document.querySelectorAll('input[name=qtype]:checked')].map(e=>e.value);
+  if (!qtypes.length) { alert('문제 유형을 1가지 이상 선택해 주세요.'); return; }
+
+  const btn=document.getElementById('btn-gen');
+  btn.disabled=true;
+  document.getElementById('btn-text').innerHTML='<span class="spin">⏳</span> 생성 중...';
+
+  const lw=document.getElementById('loading-wrap');
+  lw.style.display='block';
+  document.getElementById('loading-icon').textContent=s.icon;
+  document.getElementById('exam-area').style.display='none';
+  document.getElementById('score-card').style.display='none';
+  answersShown=false;
+
+  const msgs=[`${s.name} 교육과정을 분석 중...`,'단원별 핵심 내용을 선별 중...','문제 유형별 문항을 구성 중...','선택지를 생성 중...','시험지를 최종 완성 중...'];
+  let mi=0;
+  const iv=setInterval(()=>{ document.getElementById('loading-msg').textContent=msgs[mi%msgs.length]; mi++; },1300);
+
+  // 과목별 프롬프트 맞춤화
+  const subjectHints = {
+    korean:`독해·문법·어휘·문학 등 국어 교과 문제. 지문 제시형 독해 문제 포함 가능`,
+    english:`영어 어휘·문법·독해·영작 문제. 영어 문장 포함, 한국어 설명과 혼용 가능`,
+    math:`수학 계산·개념·서술형 문제. 수식 표기 시 일반 텍스트로 표현 (예: x^2, √2)`,
+    science:`과학 개념·탐구·계산 문제. 단위 포함 (예: m/s², N, J)`,
+    history:`역사적 사실·인물·사건 문제. 연도는 (1392년) 형태로 표기`,
+    hanmun:`한자 음훈·어휘·문장 해석 문제. 한자는 반드시 [漢字] 형태로 표기`
+  };
+
+  const prompt=`당신은 한국 중학교 ${s.name} 교사입니다.
+아래 조건으로 ${s.name} 시험 문제 ${count}개를 JSON 배열로만 반환하세요. JSON 이외 텍스트 없이.
+
+조건:
+- 과목: ${s.name} (${SUBJ_PROMPTS[currentSubj]})
+- 학년: 중학교 ${grade}학년
+- 학기/시험: ${semVal.includes('mid')?'중간고사':semVal.includes('final')?'기말고사':sem+'학기'}
+- 교재: ${s.publishers[pubFirst]||pub}
+- 단원/범위: ${unit}
+- 난이도: ${LEVEL_NAME[level]}
+- 문제 유형(균등 배분): ${qtypes.join(', ')}
+- 출제 포인트: ${subjectHints[currentSubj]}
+
+JSON 형식 (배열):
+[
+  {
+    "type": "choice",
+    "qtype": "concept",
+    "question": "문제 텍스트",
+    "choices": ["① 보기1","② 보기2","③ 보기3","④ 보기4"],
+    "answer": "①",
+    "explanation": "간단한 해설 (1~2줄)"
+  }
+]
+
+규칙:
+- 반드시 위 JSON 형식 그대로 사용 (키 이름 변경 금지: type/qtype/question/choices/answer/explanation)
+- fill 타입은 type을 "fill"로, choices 생략
+- 2015 개정 교육과정 수준에 맞는 문제
+- 정답 위치(①②③④)가 고르게 분포
+- JSON 배열만 반환, 코드블록(\`\`\`) 사용 금지
+- 반드시 ${count}개 생성`;
+
+  try {
+    let raw = '';
+
+    if (EXAM_PROXY_URL && EXAM_PROXY_URL !== 'YOUR_EXAM_PROXY_URL') {
+      // ── Apps Script 프록시 경유 (no-cors 우회용 간소화 방식) ──
+      const encoded = encodeURIComponent(prompt);
+      const res = await fetch(EXAM_PROXY_URL + '?prompt=' + encoded, { redirect: 'follow' });
+      const data = await res.json();
+      if (data.error) throw new Error('proxy: ' + data.error);
+      raw = data.text || '';
+      if (!raw) throw new Error('empty response from proxy');
+      if (data.usage) updateTokenTracker(data.usage);
+    } else {
+      // ── 직접 호출 (로컬 환경) ──
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 5000, messages: [{ role: 'user', content: prompt }] })
+      });
+      const data = await res.json();
+      if (data.content) data.content.forEach(b => { if (b.type === 'text') raw += b.text; });
+    }
+
+    console.log('프록시 응답 raw:', raw.substring(0, 500));
+    // 코드블록 제거
+    raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const m = raw.match(/\[[\s\S]*\]/);
+    if (!m) throw new Error('JSON parse error: ' + raw.substring(0,100));
+    const parsed = JSON.parse(m[0]);
+    // 한국어 키 → 영문 키 변환 (Claude가 한국어로 반환한 경우 대비)
+    currentQuestions = parsed.map(q => ({
+      type: q.type || (q['선택지'] ? 'choice' : 'fill'),
+      qtype: q.qtype || 'concept',
+      question: q.question || q['문제'] || q['질문'] || '',
+      choices: q.choices || q['선택지'] || q['보기'] || null,
+      answer: q.answer || q['정답'] || '',
+      explanation: q.explanation || q['해설'] || q['설명'] || ''
+    }));
+    renderExam({s, grade, sem, pub, unit, count, level});
+  } catch(err) {
+    console.error(err);
+    if (!EXAM_PROXY_URL || EXAM_PROXY_URL === 'YOUR_EXAM_PROXY_URL') {
+      alert('⚠️ 프록시 미설정\n\nexam_generator.html 상단의 EXAM_PROXY_URL에\nApps Script 배포 URL을 입력해 주세요.\n\n설정 방법: exam-proxy.gs 파일 참고');
+    } else {
+      alert('문제 생성 중 오류가 발생했습니다.\n잠시 후 다시 시도해 주세요.');
+    }
+    lw.style.display='none';
+  } finally {
+    clearInterval(iv);
+    btn.disabled=false;
+    document.getElementById('btn-text').textContent='✦ 시험지 생성하기';
+    lw.style.display='none';
+  }
+}
+
+// ── 렌더링 ──
+function renderExam({s,grade,sem,pub,unit,count,level}){
+  const now=new Date();
+  const dt=`${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일`;
+
+  document.getElementById('ep-title').textContent=`중학교 ${grade}학년 ${sem}학기 ${s.name} 시험`;
+  document.getElementById('em-grade').textContent=`중${grade}학년`;
+  document.getElementById('em-sem').textContent=`${sem}학기`;
+  document.getElementById('em-pub').textContent=s.publishers[pubFirst]||pub;
+  document.getElementById('em-unit').textContent=unit;
+  document.getElementById('em-cnt').textContent=`${currentQuestions.length}문항`;
+  document.getElementById('ep-date').textContent=`생성일: ${dt} · 난이도: ${LEVEL_NAME[level]}`;
+
+  const list=document.getElementById('q-list');
+  list.innerHTML='';
+
+  currentQuestions.forEach((q,i)=>{
+    const div=document.createElement('div');
+    div.className='q-item';
+    div.dataset.idx=i;
+
+    const qText=(q.question||'')
+      .replace(/\*\*([^*]+)\*\*/g,'<span class="hl">$1</span>')
+      .replace(/\[([^\]]+)\]/g,'<span class="hl">$1</span>')
+      .replace(/\((\d{1,4}년[^)]*)\)/g,'<span class="hl-b">($1)</span>');
+
+    let extra='';
+    if(q.type==='choice'&&q.choices){
+      extra=`<div class="q-choices">`+
+        q.choices.map((c,ci)=>
+          `<div class="q-choice" onclick="pick(this,${i},${ci})">
+            <div class="cn">${['①','②','③','④'][ci]}</div>
+            <span>${c.replace(/^[①②③④]\s*/,'')}</span>
+          </div>`
+        ).join('')+`</div>`;
+    } else if(q.type==='fill'){
+      extra=`<div style="margin-top:10px;">답: <input class="fill-inp" placeholder="입력" data-idx="${i}"/></div>`;
+    }
+
+    div.innerHTML=`
+      <div class="q-head"><span class="q-num">${i+1}</span><div class="q-body">${qText}</div></div>
+      ${extra}
+      <div class="ans-reveal" id="ar-${i}">✅ 정답: ${q.answer}&nbsp;|&nbsp;💡 ${q.explanation||''}</div>`;
+    list.appendChild(div);
+  });
+
+  document.getElementById('exam-area').style.display='block';
+  document.getElementById('exam-area').scrollIntoView({behavior:'smooth'});
+}
+
+function pick(el,qi,ci){
+  el.closest('.q-choices').querySelectorAll('.q-choice').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  el.dataset.sel=['①','②','③','④'][ci];
+}
+
+function checkAnswers(){
+  let ok=0,no=0,un=0;
+  currentQuestions.forEach((q,i)=>{
+    const item=document.querySelector(`.q-item[data-idx="${i}"]`);
+    document.getElementById(`ar-${i}`).classList.add('show');
+    if(q.type==='choice'){
+      const sel=item.querySelector('.q-choice.sel');
+      if(!sel){un++;return;}
+      if(sel.dataset.sel===q.answer.charAt(0)){sel.classList.add('ok');ok++;}
+      else{
+        sel.classList.add('no');no++;
+        item.querySelectorAll('.q-choice').forEach((c,ci)=>{
+          if(['①','②','③','④'][ci]===q.answer.charAt(0))c.classList.add('ok');
+        });
+      }
+    } else {
+      const inp=item.querySelector('.fill-inp');
+      if(!inp||!inp.value.trim()){un++;return;}
+      if(inp.value.trim()===q.answer.trim()){inp.style.color='#1a5c2e';inp.style.fontWeight='700';ok++;}
+      else{inp.style.color='#8b1a1a';no++;}
+    }
+  });
+  const total=ok+no+un;
+  const pt=Math.round(ok/total*100);
+  document.getElementById('sc-ok').textContent=ok;
+  document.getElementById('sc-no').textContent=no;
+  document.getElementById('sc-pt').textContent=pt+'점';
+  const msgs=[[90,'🏆 훌륭합니다!'],[70,'👍 잘했어요!'],[50,'📚 조금 더 공부해요!'],[0,'💪 기초부터 다시!']];
+  const msg=msgs.find(([t])=>pt>=t)?.[1]||'';
+  document.getElementById('sc-msg').textContent=un>0?`${msg} (미응답 ${un}문항)`:msg;
+  const sc=document.getElementById('score-card');
+  sc.style.display='flex';
+  sc.scrollIntoView({behavior:'smooth'});
+  answersShown=true;
+}
+
+function toggleAnswers(){
+  answersShown=!answersShown;
+  document.querySelectorAll('.ans-reveal').forEach(el=>el.classList.toggle('show',answersShown));
+}
+
+// ── 토큰 사용량 추적 ──
+const TOKEN_WARN_YELLOW = 50000;   // 5만 토큰: 주의
+const TOKEN_WARN_RED    = 100000;  // 10만 토큰: 위험
+const GRAND_TOTAL_KEY   = 'tokenUsage_grandTotal'; // 전체 누적 키
+
+function getTodayKey(){ return 'tokenUsage_' + new Date().toISOString().slice(0,10); }
+
+// 전체 누적 토큰 계산 (모든 날짜 합산)
+function getGrandTotal(){
+  let total = 0;
+  for(let i = 0; i < localStorage.length; i++){
+    const key = localStorage.key(i);
+    if(key && key.startsWith('tokenUsage_') && key !== GRAND_TOTAL_KEY){
+      total += parseInt(localStorage.getItem(key) || '0');
+    }
+  }
+  return total;
+}
+
+// 전체 누적 UI 갱신
+function updateGrandTotal(){
+  const grand = getGrandTotal();
+  const el = document.getElementById('tk-grand');
+  if(el) el.textContent = grand > 0 ? grand.toLocaleString() + ' 토큰' : '-';
+}
+
+function updateTokenTracker(usage){
+  const inp = usage.input_tokens  || 0;
+  const out = usage.output_tokens || 0;
+  const req = inp + out;
+
+  // 오늘 누적 저장
+  const key = getTodayKey();
+  const prev = parseInt(localStorage.getItem(key) || '0');
+  const total = prev + req;
+  localStorage.setItem(key, total);
+
+  // UI 갱신
+  const tracker = document.getElementById('token-tracker');
+  tracker.classList.add('show');
+  document.getElementById('tk-req').textContent =
+    `입력 ${inp.toLocaleString()} + 출력 ${out.toLocaleString()} = ${req.toLocaleString()} 토큰`;
+  document.getElementById('tk-total').textContent = total.toLocaleString() + ' 토큰';
+
+  // 전체 누적 갱신
+  updateGrandTotal();
+
+  // 진행 바 (10만 기준)
+  const pct = Math.min(total / TOKEN_WARN_RED * 100, 100);
+  document.getElementById('tk-bar').style.width = pct + '%';
+  if (pct >= 70) document.getElementById('tk-bar').style.background = 'linear-gradient(90deg,#f0a030,#ef4444)';
+
+  // 경고 메시지
+  const warn = document.getElementById('tk-warn');
+  warn.className = 'token-warn';
+  if (total >= TOKEN_WARN_RED) {
+    warn.className = 'token-warn red';
+    warn.textContent = '⚠️ 오늘 사용량이 10만 토큰을 넘었습니다. API 크레딧 잔액을 확인하세요.';
+  } else if (total >= TOKEN_WARN_YELLOW) {
+    warn.className = 'token-warn yellow';
+    warn.textContent = '⚡ 오늘 사용량이 5만 토큰을 넘었습니다. 크레딧 잔액을 확인하는 것을 권장합니다.';
+  }
+}
+
+// 오늘 기록만 초기화
+function resetTokenCount(){
+  localStorage.removeItem(getTodayKey());
+  document.getElementById('tk-req').textContent = '-';
+  document.getElementById('tk-total').textContent = '-';
+  document.getElementById('tk-bar').style.width = '0%';
+  document.getElementById('tk-bar').style.background = 'linear-gradient(90deg,#7c3aed,#4a9eff)';
+  document.getElementById('tk-warn').className = 'token-warn';
+  updateGrandTotal();
+  // 전체 누적도 없으면 트래커 숨김
+  if(getGrandTotal() === 0) document.getElementById('token-tracker').classList.remove('show');
+}
+
+// 전체 기록 초기화
+function resetAllTokenCount(){
+  if(!confirm('전체 누적 토큰 기록을 모두 삭제하시겠습니까?')) return;
+  const keysToRemove = [];
+  for(let i = 0; i < localStorage.length; i++){
+    const key = localStorage.key(i);
+    if(key && key.startsWith('tokenUsage_')) keysToRemove.push(key);
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+  document.getElementById('tk-req').textContent = '-';
+  document.getElementById('tk-total').textContent = '-';
+  document.getElementById('tk-grand').textContent = '-';
+  document.getElementById('tk-bar').style.width = '0%';
+  document.getElementById('tk-bar').style.background = 'linear-gradient(90deg,#7c3aed,#4a9eff)';
+  document.getElementById('tk-warn').className = 'token-warn';
+  document.getElementById('token-tracker').classList.remove('show');
+}
+
+// 페이지 로드 시 오늘 누적 이미 있으면 표시
+(function(){
+  const key = getTodayKey();
+  const saved = parseInt(localStorage.getItem(key) || '0');
+  const grand = getGrandTotal();
+  if (saved > 0 || grand > 0) {
+    const tracker = document.getElementById('token-tracker');
+    tracker.classList.add('show');
+    document.getElementById('tk-req').textContent = '-';
+    document.getElementById('tk-total').textContent = saved > 0 ? saved.toLocaleString() + ' 토큰 (이전 기록)' : '-';
+    document.getElementById('tk-grand').textContent = grand > 0 ? grand.toLocaleString() + ' 토큰' : '-';
+    const pct = Math.min(saved / TOKEN_WARN_RED * 100, 100);
+    document.getElementById('tk-bar').style.width = pct + '%';
+    if (pct >= 70) document.getElementById('tk-bar').style.background = 'linear-gradient(90deg,#f0a030,#ef4444)';
+    const warn = document.getElementById('tk-warn');
+    if (saved >= TOKEN_WARN_RED) {
+      warn.className = 'token-warn red';
+      warn.textContent = '⚠️ 오늘 사용량이 10만 토큰을 넘었습니다. API 크레딧 잔액을 확인하세요.';
+    } else if (saved >= TOKEN_WARN_YELLOW) {
+      warn.className = 'token-warn yellow';
+      warn.textContent = '⚡ 오늘 사용량이 5만 토큰을 넘었습니다. 크레딧 잔액을 확인하는 것을 권장합니다.';
+    }
+  }
+})();
+</script>
+</body>
+</html>
