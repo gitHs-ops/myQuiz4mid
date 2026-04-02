@@ -302,25 +302,20 @@ const TARGET_PAGE    = 'exam_generator.html'; // 이동할 대상 페이지
 // EmailJS (reserved_view.html 에서 복사)
 const EJS_PUBLIC_KEY = 'ZtCJZtJkeMhYsZSeN';
 const EJS_SERVICE_ID = 'service_92ic4gd';
-const EJS_TEMPLATE   = 'template_fbg83fx';    // 신청 안내용 템플릿 (기존 confirm 템플릿 재활용)
+const EJS_TEMPLATE   = 'template_fbg83fx';
 
-// GAS 이메일 프록시 (reserved_view.html 에서 복사)
+// GAS 이메일 프록시
 const GAS_EMAIL_URL  = 'https://script.google.com/macros/s/AKfycbzpKlWexxoz_qOjFK_NYRmqi-Sa28V9vtOl48joj6b1FhM35e6MY0WBinTVFCUoyO9C1g/exec';
 
-// 솔라피 SMS GAS 프록시 (sms_proxy.gs 배포 후 URL 교체)
+// 솔라피 SMS GAS 프록시
 const SOLAPI_SMS_PROXY_URL = 'https://script.google.com/macros/s/AKfycbzOmKHKIIQGCUFinZxvOZw0hGAWLZlP54PNefQTRSkrm5ShRpgEYo2XO7oHy8zbZIrvOw/exec';
+
+// 구글 시트 프록시 (회원 조회/등록)
+const SHEET_PROXY_URL = 'https://script.google.com/macros/s/AKfycbz_CpWXthf2rgmtbYklhUxRSfnJvlC9ZTvi74V_leuCsR9UJVCmoQ37qbDdzvkJdqjRyA/exec';
 
 // 관리자 수신 정보
 const ADMIN_RECEIVER_EMAIL = 'khsq2011@gmail.com';
 const ADMIN_RECEIVER_PHONE = '01026989056';
-
-// 일반 사용자 등록 목록
-const REGISTERED_EMAILS = [
-  // 예: 'student01@school.kr'
-];
-const REGISTERED_PHONES = [
-  // 예: '01012345678'
-];
 
 emailjs.init({ publicKey: EJS_PUBLIC_KEY });
 
@@ -383,38 +378,43 @@ function moveTo(page, identifier, identifierType, role) {
 }
 
 // ══════════════════════════════════════════════
-// ④ 시작하기
+// ④ 시작하기 (구글 시트 회원 조회)
 // ══════════════════════════════════════════════
-function handleStart() {
+async function handleStart() {
   clearStatus();
   document.getElementById('newUserMsgBox').classList.remove('active');
   document.getElementById('sendResults').classList.remove('active');
 
-  if (currentTab === 'email') {
-    const email = getEmail();
-    if (!email) { showStatus('⚠️ 이메일 주소를 입력해 주세요.', 'error'); return; }
-    if (!isValidEmail(email)) { showStatus('⚠️ 올바른 이메일 형식이 아닙니다.', 'error'); return; }
-    if (email === ADMIN_EMAIL) {
-      showStatus('🔧 관리자 계정은 <b>관리자 버튼</b>으로 접속해 주세요.', 'warning'); return;
-    }
-    if (REGISTERED_EMAILS.map(e => e.toLowerCase()).includes(email)) {
-      moveTo(TARGET_PAGE, email, 'email', 'user');
-    } else {
-      showStatus('❌ 등록되지 않은 이메일입니다.<br>👋 <b>처음 이용자</b> 버튼으로 이용 신청을 해 주세요.', 'error');
-    }
+  const id = currentTab === 'email' ? getEmail() : getPhone();
 
-  } else {
-    const phone = getPhone();
-    if (!phone) { showStatus('⚠️ 전화번호를 입력해 주세요.', 'error'); return; }
-    if (!isValidPhone(phone)) { showStatus('⚠️ 올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678)', 'error'); return; }
-    if (phone === ADMIN_PHONE) {
+  if (currentTab === 'email') {
+    if (!id) { showStatus('⚠️ 이메일 주소를 입력해 주세요.', 'error'); return; }
+    if (!isValidEmail(id)) { showStatus('⚠️ 올바른 이메일 형식이 아닙니다.', 'error'); return; }
+    if (id === ADMIN_EMAIL) {
       showStatus('🔧 관리자 계정은 <b>관리자 버튼</b>으로 접속해 주세요.', 'warning'); return;
     }
-    if (REGISTERED_PHONES.includes(phone)) {
-      moveTo(TARGET_PAGE, phone, 'phone', 'user');
-    } else {
-      showStatus('❌ 등록되지 않은 전화번호입니다.<br>👋 <b>처음 이용자</b> 버튼으로 이용 신청을 해 주세요.', 'error');
+  } else {
+    if (!id) { showStatus('⚠️ 전화번호를 입력해 주세요.', 'error'); return; }
+    if (!isValidPhone(id)) { showStatus('⚠️ 올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678)', 'error'); return; }
+    if (id === ADMIN_PHONE) {
+      showStatus('🔧 관리자 계정은 <b>관리자 버튼</b>으로 접속해 주세요.', 'warning'); return;
     }
+  }
+
+  // 구글 시트에서 회원 조회
+  showStatus('🔍 확인 중...', 'info');
+  try {
+    const qs  = new URLSearchParams({ action: 'check', id: id });
+    const res = await fetch(`${SHEET_PROXY_URL}?${qs.toString()}`, { redirect: 'follow' });
+    const data = await res.json();
+    if (data.success) {
+      clearStatus();
+      moveTo(TARGET_PAGE, id, currentTab === 'email' ? 'email' : 'phone', 'user');
+    } else {
+      showStatus('❌ 등록되지 않은 계정입니다.<br>👋 <b>처음 이용자</b> 버튼으로 이용 신청을 해 주세요.', 'error');
+    }
+  } catch(e) {
+    showStatus('⚠️ 서버 연결 오류입니다. 잠시 후 다시 시도해 주세요.', 'error');
   }
 }
 
@@ -452,7 +452,7 @@ function openAdminModal() {
 
 function closeAdminModal() { document.getElementById('adminModal').classList.remove('active'); }
 
-function confirmAdmin() {
+async function confirmAdmin() {
   const pw    = document.getElementById('adminPwInput').value;
   const email = getEmail();
   const phone = getPhone();
@@ -466,25 +466,31 @@ function confirmAdmin() {
     if (email === ADMIN_EMAIL) {
       moveTo(TARGET_PAGE, email, 'email', 'admin');
     } else {
-      const list = REGISTERED_EMAILS.map(e => e.toLowerCase());
-      if (!list.includes(email)) {
-        REGISTERED_EMAILS.push(email);
+      // 구글 시트에 등록
+      showStatus('⏳ 등록 중...', 'info');
+      try {
+        const qs  = new URLSearchParams({ action: 'register', id: email });
+        const res = await fetch(`${SHEET_PROXY_URL}?${qs.toString()}`, { redirect: 'follow' });
+        const data = await res.json();
         showStatus(`✅ '${email}' 이(가) 신규 이메일로 등록되었습니다.`, 'success');
-      } else {
-        showStatus(`ℹ️ '${email}' 은(는) 이미 등록된 이메일입니다.`, 'info');
+      } catch(e) {
+        showStatus('⚠️ 등록 중 오류가 발생했습니다.', 'error');
       }
     }
   } else {
     if (phone === ADMIN_PHONE) {
       moveTo(TARGET_PAGE, phone, 'phone', 'admin');
     } else {
-      if (!REGISTERED_PHONES.includes(phone)) {
-        REGISTERED_PHONES.push(phone);
+      // 구글 시트에 등록
+      showStatus('⏳ 등록 중...', 'info');
+      try {
         const fmt = `010-${phone.slice(3,7)}-${phone.slice(7)}`;
+        const qs  = new URLSearchParams({ action: 'register', id: phone });
+        const res = await fetch(`${SHEET_PROXY_URL}?${qs.toString()}`, { redirect: 'follow' });
+        const data = await res.json();
         showStatus(`✅ '${fmt}' 이(가) 신규 전화번호로 등록되었습니다.`, 'success');
-      } else {
-        const fmt = `010-${phone.slice(3,7)}-${phone.slice(7)}`;
-        showStatus(`ℹ️ '${fmt}' 은(는) 이미 등록된 전화번호입니다.`, 'info');
+      } catch(e) {
+        showStatus('⚠️ 등록 중 오류가 발생했습니다.', 'error');
       }
     }
   }
@@ -508,16 +514,20 @@ async function handleNewUser() {
   if (currentTab === 'email') {
     if (!isValidEmail(email)) { showStatus('⚠️ 올바른 이메일 형식이 아닙니다.', 'error'); return; }
     if (email === ADMIN_EMAIL) { showStatus('🔧 관리자 계정은 관리자 버튼으로 접속해 주세요.', 'warning'); return; }
-    if (REGISTERED_EMAILS.map(e => e.toLowerCase()).includes(email)) {
-      showStatus('✅ 이미 등록된 이메일입니다. 시작하기 버튼을 눌러주세요.', 'info'); return;
-    }
   } else {
     if (!isValidPhone(phone)) { showStatus('⚠️ 올바른 전화번호 형식이 아닙니다.', 'error'); return; }
     if (phone === ADMIN_PHONE) { showStatus('🔧 관리자 계정은 관리자 버튼으로 접속해 주세요.', 'warning'); return; }
-    if (REGISTERED_PHONES.includes(phone)) {
-      showStatus('✅ 이미 등록된 전화번호입니다. 시작하기 버튼을 눌러주세요.', 'info'); return;
-    }
   }
+
+  // 이미 등록된 회원인지 확인
+  try {
+    const qs  = new URLSearchParams({ action: 'check', id: id });
+    const res = await fetch(`${SHEET_PROXY_URL}?${qs.toString()}`, { redirect: 'follow' });
+    const data = await res.json();
+    if (data.success) {
+      showStatus('✅ 이미 등록된 계정입니다. 시작하기 버튼을 눌러주세요.', 'info'); return;
+    }
+  } catch(e) { /* 조회 실패해도 신청 진행 */ }
 
   // 신청 메시지 구성
   const applicantLabel = currentTab === 'email' ? email
