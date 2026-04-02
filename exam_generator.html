@@ -794,6 +794,7 @@ JSON 형식 (배열):
 
   try {
     let raw = '';
+    let usageData = null;
 
     if (EXAM_PROXY_URL && EXAM_PROXY_URL !== 'YOUR_EXAM_PROXY_URL') {
       // ── Apps Script 프록시 경유 (no-cors 우회용 간소화 방식) ──
@@ -803,7 +804,7 @@ JSON 형식 (배열):
       if (data.error) throw new Error('proxy: ' + data.error);
       raw = data.text || '';
       if (!raw) throw new Error('empty response from proxy');
-      if (data.usage) updateTokenTracker(data.usage);
+      if (data.usage) { updateTokenTracker(data.usage); usageData = data.usage; }
     } else {
       // ── 직접 호출 (로컬 환경) ──
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -813,6 +814,7 @@ JSON 형식 (배열):
       });
       const data = await res.json();
       if (data.content) data.content.forEach(b => { if (b.type === 'text') raw += b.text; });
+      if (data.usage) { updateTokenTracker(data.usage); usageData = data.usage; }
     }
 
     console.log('프록시 응답 raw:', raw.substring(0, 500));
@@ -832,7 +834,7 @@ JSON 형식 (배열):
     }));
     renderExam({s, grade, sem, pub, unit, count, level});
     // ── 구글 시트 기록 전송 ──
-    if (data.usage) logToSheet(data.usage);
+    if (typeof usageData !== 'undefined' && usageData) logToSheet(usageData);
   } catch(err) {
     console.error(err);
     if (!EXAM_PROXY_URL || EXAM_PROXY_URL === 'YOUR_EXAM_PROXY_URL') {
