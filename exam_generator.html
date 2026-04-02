@@ -365,6 +365,11 @@ header::before{
         <div id="sel-unit" style="display:flex;flex-direction:column;gap:5px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;"></div>
       </div>
       <div class="cfg-item">
+        <label>학생 이름</label>
+        <input type="text" id="sel-name" placeholder="이름 입력 (선택)" maxlength="10"
+          style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:inherit;font-size:.88rem;background:var(--bg2);color:var(--text);">
+      </div>
+      <div class="cfg-item">
         <label>문항 수</label>
         <select id="sel-count">
           <option value="5">5문항</option>
@@ -456,6 +461,13 @@ header::before{
 // ── 프록시 URL 설정 ──
 // exam-proxy.gs를 Apps Script에 배포한 후 아래 URL을 입력하세요
 const EXAM_PROXY_URL = "https://script.google.com/macros/s/AKfycbyfB5Xi7V8qC4a1rKP24ArexpA02un5SnyhmuRlwh43nD6OXgEosC5aMwD8AZU4_zlmWQ/exec";
+
+// 구글 시트 기록 프록시 (sheet_proxy.gs 배포 후 URL 입력)
+const SHEET_PROXY_URL = 'https://script.google.com/macros/s/AKfycbzKnGEqoSErQv7F0lF1yVGb6wgcm8vXgsz842yZtaM-Rzjs9Oq_jwO9MTMOKmjZZv_uEA/exec';
+
+// 로그인 페이지에서 넘어온 이메일/전화번호 읽기
+const _urlParams   = new URLSearchParams(window.location.search);
+const LOGIN_EMAIL  = _urlParams.get('email') || _urlParams.get('phone') || '(미로그인)';
 
 // ══════════════════════════════════════════
 //  과목 데이터
@@ -818,6 +830,8 @@ JSON 형식 (배열):
       explanation: q.explanation || q['해설'] || q['설명'] || ''
     }));
     renderExam({s, grade, sem, pub, unit, count, level});
+    // ── 구글 시트 기록 전송 ──
+    if (data.usage) logToSheet(data.usage);
   } catch(err) {
     console.error(err);
     if (!EXAM_PROXY_URL || EXAM_PROXY_URL === 'YOUR_EXAM_PROXY_URL') {
@@ -1024,6 +1038,42 @@ function resetAllTokenCount(){
   document.getElementById('tk-bar').style.background = 'linear-gradient(90deg,#7c3aed,#4a9eff)';
   document.getElementById('tk-warn').className = 'token-warn';
   document.getElementById('token-tracker').classList.remove('show');
+}
+
+// ── 구글 시트 기록 전송 (POST + JSON body — 테니스 예약과 동일 방식) ──
+async function logToSheet(usage) {
+  if (!SHEET_PROXY_URL || SHEET_PROXY_URL.includes('여기에')) return;
+  try {
+    const studentName = document.getElementById('sel-name')?.value.trim() || '(미입력)';
+    const inp   = usage.input_tokens  || 0;
+    const out   = usage.output_tokens || 0;
+    const total = inp + out;
+
+    // 클라이언트 IP 조회 (ipify 무료 API)
+    let clientIp = '(알 수 없음)';
+    try {
+      const ipRes = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipRes.json();
+      clientIp = ipData.ip || '(알 수 없음)';
+    } catch(_) {}
+
+    const payload = {
+      name:   studentName,
+      tokens: total,
+      input:  inp,
+      output: out,
+      email:  LOGIN_EMAIL,
+      subj:   '중' + (document.getElementById('sel-grade')?.value || '') + '학년 ' + (SUBJECTS[currentSubj]?.name || currentSubj),
+      ip:     clientIp,
+      ts:     new Date().toISOString()
+    };
+    await fetch(SHEET_PROXY_URL, {
+      method: 'POST',
+      body:   JSON.stringify(payload),
+    });
+  } catch(e) {
+    console.warn('시트 기록 실패(무시):', e.message);
+  }
 }
 
 // 페이지 로드 시 오늘 누적 이미 있으면 표시
