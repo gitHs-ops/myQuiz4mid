@@ -578,8 +578,14 @@ document.getElementById('adminModal').addEventListener('click', function(e) {
   if (e.target === this) closeAdminModal();
 });
 </script>
-<div style="position:fixed;bottom:6px;right:10px;font-size:0.7rem;color:#aaa;pointer-events:none;">
-  소스 버전: 2026-04-03 06:10
-</div>
+<div id="srcVer" style="position:fixed;bottom:6px;right:10px;font-size:0.7rem;color:#aaa;pointer-events:none;"></div>
+<script>
+  (function(){
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const str = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    document.getElementById('srcVer').textContent = '접속 시각: ' + str;
+  })();
+</script>
 </body>
 </html>
