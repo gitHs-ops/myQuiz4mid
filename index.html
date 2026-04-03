@@ -6,7 +6,6 @@
   <link rel="icon" href="data:,">
   <title>로그인 — 전과목 시험지 생성기(중학교)</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -299,25 +298,15 @@ const ADMIN_PHONE    = '01026989056';          // 관리자 전화번호 (숫자
 const ADMIN_PASSWORD = '1dl34';
 const TARGET_PAGE    = 'exam_generator.html'; // 이동할 대상 페이지
 
-// EmailJS (reserved_view.html 에서 복사)
-const EJS_PUBLIC_KEY = 'ZtCJZtJkeMhYsZSeN';
-const EJS_SERVICE_ID = 'service_92ic4gd';
-const EJS_TEMPLATE   = 'template_fbg83fx';
-
-// GAS 이메일 프록시
-const GAS_EMAIL_URL  = 'https://script.google.com/macros/s/AKfycbzpKlWexxoz_qOjFK_NYRmqi-Sa28V9vtOl48joj6b1FhM35e6MY0WBinTVFCUoyO9C1g/exec';
-
 // 솔라피 SMS GAS 프록시
 const SOLAPI_SMS_PROXY_URL = 'https://script.google.com/macros/s/AKfycbzOmKHKIIQGCUFinZxvOZw0hGAWLZlP54PNefQTRSkrm5ShRpgEYo2XO7oHy8zbZIrvOw/exec';
 
-// 구글 시트 프록시 (회원 조회/등록)
+// 구글 시트 프록시 (회원 조회/등록/이메일 발송)
 const SHEET_PROXY_URL = 'https://script.google.com/macros/s/AKfycbz_CpWXthf2rgmtbYklhUxRSfnJvlC9ZTvi74V_leuCsR9UJVCmoQ37qbDdzvkJdqjRyA/exec';
 
 // 관리자 수신 정보
 const ADMIN_RECEIVER_EMAIL = 'khsq2011@gmail.com';
 const ADMIN_RECEIVER_PHONE = '01026989056';
-
-emailjs.init({ publicKey: EJS_PUBLIC_KEY });
 
 // ══════════════════════════════════════════════
 // ② 탭 전환
@@ -497,7 +486,7 @@ async function confirmAdmin() {
 }
 
 // ══════════════════════════════════════════════
-// ⑥ 처음 이용자 — EmailJS + GAS + Aligo SMS
+// ⑥ 처음 이용자 — GAS MailApp(이메일) / 솔라피(SMS)
 // ══════════════════════════════════════════════
 async function handleNewUser() {
   clearStatus();
@@ -578,41 +567,6 @@ async function sendSmsToAdmin(receiverPhone, msg) {
     return !!data.success;
   } catch (e) {
     console.error('SMS 발송 오류:', e);
-    return false;
-  }
-}
-
-// ── EmailJS (reserved_view.html 동일 패턴) ──
-async function sendEmailToAdmin(toEmail, applicantLabel, msg) {
-  // 1차: EmailJS 시도
-  try {
-    await emailjs.send(EJS_SERVICE_ID, EJS_TEMPLATE, {
-      to_email: toEmail,
-      to_name:  '관리자',
-      name:     '전과목 시험지 생성기(중학교)',
-      subject:  '[전과목 시험지 생성기(중학교)] 이용 신청이 들어왔습니다',
-      message:  msg,
-    });
-    return true;
-  } catch (ejsErr) {
-    console.warn('EmailJS 실패, GAS 재시도:', ejsErr);
-  }
-
-  // 2차: GAS 프록시 재시도 (reserved_view.html의 sendEmailGAS 동일 패턴)
-  try {
-    const res  = await fetch(GAS_EMAIL_URL, {
-      method: 'POST',
-      body:   JSON.stringify({
-        to_email: toEmail,
-        to_name:  '관리자',
-        subject:  '[전과목 시험지 생성기(중학교)] 이용 신청이 들어왔습니다',
-        message:  msg,
-      }),
-    });
-    const data = await res.json();
-    return !!data.success;
-  } catch (e) {
-    console.error('GAS 이메일도 실패:', e);
     return false;
   }
 }
