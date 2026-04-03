@@ -540,11 +540,16 @@ async function handleNewUser() {
       setResult('Email', 'err', '✉️ 이메일 발송 실패');
     }
   } else {
-    // 전화번호 탭: 관리자에게 SMS만 발송
+    // 전화번호 탭: 관리자에게 SMS 발송 + 대기목록 저장
     setResult('Sms', 'loading', 'SMS 발송 중...');
     const applyMsg = `[전과목 시험지 생성기(중학교) 이용 신청]\n신청자: ${applicantLabel}\n\n승인 후 이용 가능하오니 검토 부탁드립니다.`;
     const smsOk = await sendSmsToAdmin(ADMIN_RECEIVER_PHONE, applyMsg);
     setResult('Sms', smsOk ? 'ok' : 'err', smsOk ? '📱 SMS 발송 완료' : '📱 SMS 발송 실패');
+    // 대기목록 저장 (GAS notify - 이메일 발송 없이 저장만)
+    try {
+      const qs = new URLSearchParams({ action: 'notify', id: phone, smsOnly: '1' });
+      await fetch(`${SHEET_PROXY_URL}?${qs.toString()}`, { redirect: 'follow' });
+    } catch(e) { console.warn('대기목록 저장 실패:', e.message); }
   }
 
   // 완료 메시지
@@ -578,14 +583,8 @@ document.getElementById('adminModal').addEventListener('click', function(e) {
   if (e.target === this) closeAdminModal();
 });
 </script>
-<div id="srcVer" style="position:fixed;bottom:6px;right:10px;font-size:0.7rem;color:#aaa;pointer-events:none;"></div>
-<script>
-  (function(){
-    const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const str = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    document.getElementById('srcVer').textContent = '접속 시각: ' + str;
-  })();
-</script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:0.7rem;color:#aaa;pointer-events:none;">
+  v2026-04-04 08:50
+</div>
 </body>
 </html>
